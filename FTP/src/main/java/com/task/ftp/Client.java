@@ -3,7 +3,7 @@ package com.task.ftp;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.*;
-import java.util.*;
+
 
 public class Client {
 
@@ -15,7 +15,7 @@ public class Client {
         try (var socket = new Socket(hostName, portNumber);
              var in = new DataInputStream(socket.getInputStream());
              var out = new DataOutputStream(socket.getOutputStream())) {
-
+            socket.setTcpNoDelay(true);
             out.writeChars("Hello");
 
         }
@@ -25,17 +25,22 @@ public class Client {
         try (var socket = new Socket(hostName, port);
              var in = new DataInputStream(socket.getInputStream());
              var out = new DataOutputStream(socket.getOutputStream())) {
+            socket.setTcpNoDelay(true);
             out.writeChars("Bye");
         }
     }
 
-    //Returns null if didnt get result or get in wrong format
+    /**
+     * Returns null if didnt get result or get in wrong format
+     *
+     */
     String[] executeList(String path) throws IOException {
         String result = "";
         try (var socket = new Socket(hostName, port);
              var in = new BufferedReader(new InputStreamReader(
                      new DataInputStream(socket.getInputStream()), StandardCharsets.UTF_8));
              var out = new DataOutputStream(socket.getOutputStream())) {
+            socket.setTcpNoDelay(true);
             var request = "1 " + path;
             out.writeChars(request);
             String input;
@@ -60,11 +65,15 @@ public class Client {
         return res;
     }
 
-    //returns
+    /**
+     * Returns requested file content as byte array
+     *
+     */
     byte[] executeGet(String path) {
         try (var socket = new Socket(hostName, port);
              var in = new DataInputStream(socket.getInputStream());
              var out = new DataOutputStream(socket.getOutputStream())) {
+            socket.setTcpNoDelay(true);
             var request = "2 " + path;
             out.writeChars(request);
             int size = in.readInt();
