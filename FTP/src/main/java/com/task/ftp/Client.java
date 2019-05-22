@@ -7,28 +7,34 @@ import java.nio.charset.*;
 
 public class Client {
 
-    private int port;
-    private String hostName;
+    private Socket socket;
+    private DataInputStream in;
+    private DataOutputStream out;
 
-    void connect(String hostName, int portNumber) throws IOException {
-        this.hostName = hostName;
-        try (var socket = new Socket(hostName, portNumber);
-             var in = new DataInputStream(socket.getInputStream());
-             var out = new DataOutputStream(socket.getOutputStream())) {
+    int connect(String hostName, int portNumber){
+        try {
+            socket = new Socket(hostName, portNumber);
+            in = new DataInputStream(socket.getInputStream());
+            out = new DataOutputStream(socket.getOutputStream());
             socket.setTcpNoDelay(true);
             out.writeChars("Hello");
-            port = in.readInt();
-
+        } catch (IOException e) {
+            return -1;
         }
+        return 0;
     }
 
-    void disconnect() throws IOException {
-        try (var socket = new Socket(hostName, port);
-             var in = new DataInputStream(socket.getInputStream());
-             var out = new DataOutputStream(socket.getOutputStream())) {
-            socket.setTcpNoDelay(true);
+    int disconnect() {
+        try {
             out.writeChars("Bye");
+
+            out.close();
+            in.close();
+            socket.close();
+        } catch (IOException e) {
+            return -1;
         }
+        return 0;
     }
 
     /**
@@ -37,15 +43,12 @@ public class Client {
      */
     String[] executeList(String path) throws IOException {
         String result = "";
-        try (var socket = new Socket(hostName, port);
-             var in = new BufferedReader(new InputStreamReader(
-                     new DataInputStream(socket.getInputStream()), StandardCharsets.UTF_8));
-             var out = new DataOutputStream(socket.getOutputStream())) {
+        try (var inputReader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             socket.setTcpNoDelay(true);
             var request = "1 " + path;
             out.writeChars(request);
             String input;
-            while ((input = in.readLine()) != null) {
+            while ((input = inputReader.readLine()) != null) {
                 result += input;
             }
         }
@@ -71,9 +74,7 @@ public class Client {
      *
      */
     byte[] executeGet(String path) {
-        try (var socket = new Socket(hostName, port);
-             var in = new DataInputStream(socket.getInputStream());
-             var out = new DataOutputStream(socket.getOutputStream())) {
+        try {
             socket.setTcpNoDelay(true);
             var request = "2 " + path;
             out.writeChars(request);
