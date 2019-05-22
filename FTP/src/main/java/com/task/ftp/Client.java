@@ -44,6 +44,7 @@ public class Client {
             socket.setTcpNoDelay(true);
             var request = "1 " + path;
             out.writeChars(request);
+            out.flush();
             String input;
             while ((input = inputReader.readLine()) != null) {
                 result += input;
@@ -75,6 +76,7 @@ public class Client {
             socket.setTcpNoDelay(true);
             var request = "2 " + path;
             out.writeChars(request);
+            out.flush();
             int size = in.readInt();
             if (size == -1) {
                 return null;
