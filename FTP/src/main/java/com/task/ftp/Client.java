@@ -17,7 +17,6 @@ public class Client {
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
             socket.setTcpNoDelay(true);
-            out.writeChars("Hello");
         } catch (IOException e) {
             return -1;
         }
@@ -26,8 +25,6 @@ public class Client {
 
     int disconnect() {
         try {
-            out.writeChars("Bye");
-
             out.close();
             in.close();
             socket.close();
