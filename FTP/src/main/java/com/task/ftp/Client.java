@@ -17,6 +17,7 @@ public class Client {
              var out = new DataOutputStream(socket.getOutputStream())) {
             socket.setTcpNoDelay(true);
             out.writeChars("Hello");
+            port = in.readInt();
 
         }
     }
