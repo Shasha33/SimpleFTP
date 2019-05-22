@@ -6,7 +6,7 @@ import java.util.*;
 
 public class Parser {
 
-    private static int getType(String c) {
+    public static int getType(String c) {
         var list = c.split(" ");
         try {
             return Integer.parseInt(list[0]);
@@ -15,7 +15,7 @@ public class Parser {
         }
     }
 
-    private static byte[] getAnswer(String path) {
+    public static byte[] getAnswer(String path) {
         var file = new File(path);
         var buffer = new ArrayList<Byte>();
         if (file.isFile()) {
@@ -35,7 +35,7 @@ public class Parser {
         return buffer.toArray(new byte[]);
     }
 
-    private static String listAnswer(String path) {
+    public static String listAnswer(String path) {
         var dir = new File(path);
         var result = "";
         if (!dir.isDirectory()) {
