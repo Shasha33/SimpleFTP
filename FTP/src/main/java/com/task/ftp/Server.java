@@ -54,7 +54,7 @@ public class Server {
             } catch (IOException e) {
                 return -1;
             }
-            if (outBuffer.remaining() == 0) {
+            if (!outBuffer.hasRemaining()) {
                 return 1;
             }
             return 0;
@@ -71,6 +71,7 @@ public class Server {
             if (type != 1 && type != 2) {
                 return -1;
             }
+
             return 0;
         }
 
@@ -94,7 +95,8 @@ public class Server {
 
         private void listAnswer() {
             var files = getFileList(new File(path));
-            var header = Ints.toByteArray(files.size());
+            files.sort(Comparator.comparing(File::getName));
+            outBuffer.putInt(files.size());
             var str = "";
             for (var file : files) {
                 if (file.isDirectory()) {
@@ -104,8 +106,10 @@ public class Server {
                 }
                 str += file.getName();
             }
-            var result = Parser.concat(header, str.getBytes());
-            outBuffer.put(result);
+            for (var ch : str.toCharArray()) {
+                outBuffer.putChar(ch);
+            }
+            outBuffer.flip();
         }
 
         private int getAnswer() {
@@ -119,10 +123,12 @@ public class Server {
             } catch (IOException e) {
                 return -1;
             }
+            outBuffer.flip();
             return 0;
         }
 
         private int compute() {
+            parseInput();
             if (type == 1) {
                 listAnswer();
                 return 0;
@@ -153,11 +159,10 @@ public class Server {
         try {
             var server = new Server();
             server.start(PORT);
-            System.out.println("HEHE");
             var client = new Client();
             int res = client.connect(HOST, PORT);
             System.out.println("connection client " + res);
-            var result = client.executeList("./.idea");
+            var result = client.executeList("src");
             System.out.println(result);
         } catch (Exception e) {
             System.out.println(e + " main");
@@ -187,9 +192,7 @@ public class Server {
                     var socketChannel = serverSocketChannel.accept();
                     if (socketChannel != null) {
                         socketChannel.configureBlocking(false);
-                        var buffer = ByteBuffer.allocate(BUFF_SIZE);
                         socketChannel.register(readSelector, SelectionKey.OP_READ, new ClientStateHolder(socketChannel));
-                        System.out.println("DONE");
                     }
 
                 }
@@ -203,14 +206,19 @@ public class Server {
 
         readingThread = new Thread(() -> {
             while(true) {
+                try {
+                    if (readSelector.select(100) == 0) {
+                        continue;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 var keys = readSelector.selectedKeys();
                 var iterator = keys.iterator();
-
                 while (iterator.hasNext()) {
-                    System.out.println("lsl");
                     var key = iterator.next();
                     if (key.isReadable()) {
-                        System.out.println("LEK");
                         var current = (ClientStateHolder) key.attachment();
                         int result = current.read();
                         if (result == 1) {
@@ -236,29 +244,30 @@ public class Server {
         writingThread = new Thread(() -> {
             while (true) {
                 try {
-                    if (writeSelector.select() != 0) break;
+                    if (writeSelector.select(100) == 0) continue;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
-            var iterator = writeSelector.selectedKeys().iterator();
 
-            while (iterator.hasNext()) {
-                var key = iterator.next();
-                if (key.isWritable()) {
-                    var current = (ClientStateHolder) key.attachment();
-                    int result = current.write();
-                    if (result == 1) {
-                        key.cancel();
-                        pool.execute(() -> {
-                            try {
-                                current.getSocketChannel().register(readSelector, SelectionKey.OP_READ,
-                                        new ClientStateHolder(current.getSocketChannel()));
-                            } catch (ClosedChannelException e) {
-                                //kek
-                                System.out.println("In write " + e);
-                            }
-                        });
+                var iterator = writeSelector.selectedKeys().iterator();
+
+                while (iterator.hasNext()) {
+                    var key = iterator.next();
+                    if (key.isWritable()) {
+                        var current = (ClientStateHolder) key.attachment();
+                        int result = current.write();
+                        if (result == 1) {
+                            key.cancel();
+                            pool.execute(() -> {
+                                try {
+                                    current.getSocketChannel().register(readSelector, SelectionKey.OP_READ,
+                                            new ClientStateHolder(current.getSocketChannel()));
+                                } catch (ClosedChannelException e) {
+                                    //kek
+                                    System.out.println("In write " + e);
+                                }
+                            });
+                        }
                     }
                 }
             }

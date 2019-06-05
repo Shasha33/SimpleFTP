@@ -8,6 +8,8 @@ import java.nio.channels.*;
 import java.nio.charset.*;
 import java.util.*;
 
+import static java.lang.Thread.sleep;
+
 
 public class Client {
 
@@ -18,13 +20,16 @@ public class Client {
 
     private final int BUFF_SIZE = 4096;
 
-    int connect(String hostName, int portNumber){
+    int connect(String hostName, int portNumber) throws InterruptedException {
         try {
             inBuffer = ByteBuffer.allocate(BUFF_SIZE);
             outBuffer = ByteBuffer.allocate(BUFF_SIZE);
             socketChannel = SocketChannel.open();
             socketChannel.configureBlocking(false);
             socketChannel.connect(new InetSocketAddress(hostName, portNumber));
+            while (!socketChannel.finishConnect()) {
+                sleep(1);
+            }
             System.out.println("OK");
         } catch (IOException e) {
             return -1;
@@ -51,7 +56,7 @@ public class Client {
             outBuffer.putInt(1);
             outBuffer.putInt(path.length());
             for (var c : path.toCharArray()) {
-                outBuffer.putInt(c);
+                outBuffer.putChar(c);
             }
 
             while (outBuffer.remaining() != 0) {
@@ -60,11 +65,9 @@ public class Client {
 
             outBuffer.flip();
 
-            while (outBuffer.remaining() != 0) {
+            while (outBuffer.hasRemaining()) {
                 socketChannel.write(outBuffer);
             }
-
-            System.out.println("sent " + path);
 
             int red = 0;
             while (red < 4) {
@@ -72,28 +75,35 @@ public class Client {
             }
             inBuffer.flip();
             int size = inBuffer.getInt();
-            inBuffer.clear();
+            inBuffer.flip();
+//            inBuffer.clear();
 
             int red1 = 0;
 
-            while (red1 < size) {
-                red1 += socketChannel.read(inBuffer) - 2;
+            while (red1 < size && red1 != 0) {
+                System.out.println("kek " + red1 + " " + size);
+                red1 += socketChannel.read(inBuffer);
             }
             inBuffer.flip();
+
+
 
             if (size < 1) {
                 return null;
             }
 
-            while (inBuffer.remaining() != 0) {
+            while (inBuffer.hasRemaining()) {
+                System.out.println("ELELELEL");
                 result += inBuffer.getChar();
             }
+            System.out.println("got " + result);
 
         } catch (Exception e) {
             System.out.println(e + " execc");
         }
 
         String[] res = result.split(" ");
+
         if (res.length == 0) {
             return null;
         }
